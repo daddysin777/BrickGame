@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gamedev Canvas Workshop</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+      canvas {
+        background: #eee;
+        display: block;
+        margin: 0 auto;
+      }
+      #healthbar{
+          display: block;
+          width: 20%;
+          top: 20px;
+          right: 20px;
+          text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="healthbar">jsadkjas</div>
+    <canvas id="myCanvas" width="480" height="320"></canvas>
+
+    <script>
+      // JavaScript code goes here
+        const canvas = document.getElementById("myCanvas");
+        const ctx = canvas.getContext("2d");
+        const healthbar = document.getElementById('healthbar');
+
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
+
+        const BALLSTARTX = WIDTH / 2;
+        const BALLSTARTY = HEIGHT - 100;
+
+        let lives = 3;
+
+        class Shape {
+          constructor(x, y, velX, velY, color) {
+            this.x = x;
+            this.y = y;
+            this.velX = velX;
+            this.velY = velY;
+            this.color = color;
+          }
+        }
+
+        class Ball extends Shape{
+          constructor(x, y, velX, velY, color, size) {
+            super(x, y, velX, velY, color)
+            this.size = size;
+          }
+
+          draw(){
+            ctx.beginPath();
+            ctx.fillStyle = this.color;
+            ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.closePath();
+          }
+
+          // Update ball position & check for collisions
+          update(){
+            // Wall collision
+            if ((this.x + this.size) >= WIDTH) {
+              this.velX = -(Math.abs(this.velX));
+            }
+
+            if ((this.x - this.size) <= 0) {
+              this.velX = Math.abs(this.velX);
+            }
+
+            if ((this.y + this.size) >= paddle.y + 2 * paddle.height) {
+              this.ballReset();
+            }
+
+            if ((this.y - this.size) <= 0) {
+              this.velY = Math.abs(this.velY);
+            }
+
+            // Paddle collision
+            if ((this.y + this.size >= (paddle.y)) && (this.x + this.size >= paddle.x) && (this.x + this.size <= (paddle.x + paddle.width)))
+            {
+              this.velY = -(Math.abs(this.velY));
+            }
+
+            // Brick collision
+            for (const brick of bricks){
+              if(brick.exists){
+                // Top
+                if (((this.y + this.size) >= brick.y) && ((this.y + this.size) <= (brick.y + brick.height) && ((this.x + this.size) >= brick.x) && ((this.x + this.size) <= (brick.x + brick.width)))){
+                  this.velY = -(Math.abs(this.velY));
+                  brick.exists = false;
+                }
+
+                // Left
+                if ((this.x + this.size >= brick.x) && (this.x - this.size <= brick.x + brick.width) && (this.y >= brick.y) && (this.y <= brick.y + brick.height)){
+                  this.velX = -(Math.abs(this.velX));
+                  brick.exists = false;
+                }
+
+                // Bottom
+                if ((this.y - this.size <= brick.y + brick.height) && (this.y - this.size >= brick.y) && (this.x >= brick.x) && (this.x <= brick.x + brick.width)){
+                  this.velY = Math.abs(this.velY);
+                  brick.exists = false;
+                }
+
+                // Right
+                if ((this.x - this.size <= brick.x + brick.width) && (this.x - this.size >= brick.x) && (this.y >= brick.y) && (this.y <= brick.y + brick.height)){
+                  this.velX = Math.abs(this.velX);
+                  brick.exists = false;
+                }
+            }
+          }
+
+            // Update position
+            this.x += this.velX;
+            this.y += this.velY;
+          }
+
+          // Function to reset ball position
+          ballReset(){
+            lives--;
+            this.x = (lives === 0) ? this.x : paddle.x + paddle.width / 2; 
+            this.y = (lives === 0) ? this.y : BALLSTARTY;
+            this.velX = (lives === 0) ? 0 : 2;
+            this.velY = (lives === 0) ? 0 : -2;
+          }
+        }
+
+        class Paddle extends Shape{
+          constructor(x, y, velX, velY, color, height, width){
+            super(x, y, velX, velY, color);
+            this.height = height;
+            this.width = width;
+
+            // Paddle controls
+            window.addEventListener("keydown", (e) => {
+              switch(e.key) {
+                case "a":
+                  if (!(this.x  <= 0)){
+                    this.x -= velX;
+                    break;
+                  }
+
+                case "d":
+                  if (!((this.x + this.width) >= WIDTH)){
+                    this.x += velX;
+                    break;
+                  }
+              }
+            })
+          }
+
+          draw(){
+            ctx.beginPath();
+            ctx.rect(this.x, this.y, this.width, this.height);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.closePath();
+          }
+        }
+
+        class Brick extends Shape{
+          constructor(x, y, velX=0, velY=0, color, height, width){
+            super(x, y, velX, velY, color);
+            this.height = height;
+            this.width = width;
+            this.exists = true;
+          }
+
+          draw()
+          {
+            ctx.beginPath();
+            ctx.rect(this.x, this.y, this.width, this.height);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.closePath();
+          }
+        }
+
+        // Instantiate ball
+        const ball = new Ball(BALLSTARTX, BALLSTARTY, 2, -2, "#0095DD", 10);
+        ball.draw();
+
+        // Instantiate paddle
+        const paddle = new Paddle(WIDTH / 2,  HEIGHT - 50, 10, 0, "#0095DD", 10, 70);
+        paddle.draw();
+
+        // Instantiate bricks
+        const bricks = [];
+        const ROWS = 3;
+        const COLS = 8;
+
+        for (let i = 1, bposx = bposy = 40; i <= ROWS; i++){
+          for (let j = 1; j <= COLS; j++){
+            bricks.push(new Brick(
+              bposx, bposy, 0, 0, 'red', 30, 40
+            ));
+            bposx += 50;
+          }
+          bposx = 40;
+          bposy += 40;
+        }
+
+        function drawLives(){
+          const img = document.createElement('img');
+          img.setAttribute('src', 'icon/hearttr.png');
+          img.setAttribute('alt', 'LifeIcon');
+          img.setAttribute('width', '10');
+          img.setAttribute('height', '10');
+
+          for(let i = 1; i <= lives; i++){
+            ctx.drawImage(img, -16 + i * 22, 5, 20, 20);
+          }
+        }
+
+
+        function drawFrame(){
+          // Clear frame
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Draw bricks
+          for (const brick of bricks){
+            if(brick.exists){
+              brick.draw();
+            }
+          }
+
+          // Draw & update ball
+          ball.draw();
+          ball.update();
+
+          // Draw paddle
+          paddle.draw();
+
+          // Draw lives
+          drawLives();
+
+          // Check game over
+          if(lives === 0)
+          {
+            window.location.href = "gameover.html";
+          }
+
+          // New frame
+          requestAnimationFrame(drawFrame);
+        }
+
+
+        drawFrame();
+    </script>
+  </body>
+</html>
